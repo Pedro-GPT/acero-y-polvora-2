@@ -1620,7 +1620,9 @@
   var iconCache = {};
   function renderWeaponIcons(){
     var W = 480, H = 176;
-    if (canvas.width < W || canvas.height < H) return false;
+    // si el lienzo aún es pequeño (página cargada en un marco o pestaña sin tamaño), se agranda solo para los iconos
+    var tooSmall = canvas.width < W || canvas.height < H;
+    if (tooSmall){ canvas.width = Math.max(canvas.width, W); canvas.height = Math.max(canvas.height, H); }
     var saveSun = lights.sunDir, saveCol = lights.sunCol;
     lights.sunDir = vnorm([0.6, 0.7, 0.2]); lights.sunCol = [1.0, 0.92, 0.82];
     Object.keys(WEAPON_DEFS).forEach(function(type){
@@ -1640,6 +1642,7 @@
       iconCache[type] = cv;
     });
     lights.sunDir = saveSun; lights.sunCol = saveCol;
+    if (tooSmall) resizeCanvas();
     return true;
   }
   function drawWeaponIcon(cv, type){
