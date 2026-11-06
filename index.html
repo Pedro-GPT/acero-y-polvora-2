@@ -2592,7 +2592,7 @@
   }
   aim.x = window.innerWidth / 2; aim.y = window.innerHeight / 2;
   crosshairEl.style.left = aim.x + 'px'; crosshairEl.style.top = aim.y + 'px';
-  window.addEventListener('mousemove', function(e){ if (touchMode && isTouchDevice) return; touchMode = false; setAim(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', function(e){ if (touchMode) return; setAim(e.clientX, e.clientY); });
   canvas.addEventListener('mousedown', function(e){ if (e.button === 0){ setAim(e.clientX, e.clientY); aim.down = true; } });
   window.addEventListener('mouseup', function(){ aim.down = false; });
   var spaceDown = false;
@@ -2609,18 +2609,24 @@
   window.addEventListener('blur', function(){ aim.down = false; spaceDown = false; });
   document.addEventListener('visibilitychange', function(){ if (document.hidden && mode === 'playing') togglePause(); });
 
-  var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
   function updateOrientationClass(){
     var landscape = window.innerWidth >= window.innerHeight;
     document.body.classList.toggle('is-landscape', landscape);
     document.body.classList.toggle('is-portrait', !landscape);
   }
-  if (isTouchDevice){
-    document.body.classList.add('is-mobile');
-    document.getElementById('footer-note-touch').hidden = false;
-    updateOrientationClass();
-    window.addEventListener('resize', updateOrientationClass);
-    window.addEventListener('orientationchange', updateOrientationClass);
+  updateOrientationClass();
+  window.addEventListener('resize', updateOrientationClass);
+  window.addEventListener('orientationchange', updateOrientationClass);
+  // Controles táctiles según cómo se juega, no según el aparato: un Chromebook tiene pantalla táctil también con teclado.
+  var touchUI = false;
+  function setTouchUI(on){
+    if (on === touchUI) return;
+    touchUI = on;
+    document.body.classList.toggle('is-mobile', on);
+    document.getElementById('footer-note-touch').hidden = !on;
+    touchMode = on;
+    releaseFire();
+    if (on) centerCrosshair();
   }
   // Móvil: arrastrar el dedo por la pantalla mueve la vista (apuntar); FUEGO dispara; flechas cambian de tronera
   var lookTouch = null, lookLast = null;
@@ -2662,7 +2668,14 @@
     el.addEventListener('click', function(){ turn(b[1]); });
     el.addEventListener('touchstart', function(e){ e.preventDefault(); touchMode = true; turn(b[1]); }, { passive: false });
   });
-  if (isTouchDevice){ touchMode = true; centerCrosshair(); }
+  // Al cargar y al plegar el Chromebook: táctil si no hay ratón ni panel táctil activos.
+  var touchOnly = window.matchMedia('(pointer: coarse) and (hover: none)');
+  setTouchUI(touchOnly.matches);
+  if (touchOnly.addEventListener) touchOnly.addEventListener('change', function(e){ setTouchUI(e.matches); });
+  // Durante la partida manda lo último que se ha usado: el dedo los enseña; las teclas del juego o mover el ratón los quitan.
+  window.addEventListener('pointerdown', function(e){ if (e.pointerType === 'touch') setTouchUI(true); }, true);
+  window.addEventListener('pointermove', function(e){ if (e.pointerType === 'mouse' && (e.movementX || e.movementY)) setTouchUI(false); }, true);
+  window.addEventListener('keydown', function(e){ if (/^(a|d|s|p| |escape|arrow(left|right|down))$/.test(e.key.toLowerCase())) setTouchUI(false); }, true);
 
   // =====================================================================
   //  FLUJO DE PARTIDA
